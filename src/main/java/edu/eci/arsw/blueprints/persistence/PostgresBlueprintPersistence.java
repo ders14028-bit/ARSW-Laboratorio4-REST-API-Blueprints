@@ -109,4 +109,42 @@ public class PostgresBlueprintPersistence implements BlueprintPersistence {
         jdbc.update("INSERT INTO blueprint_points (author, name, x, y, point_order) VALUES (?, ?, ?, ?, ?)",
                 author, name, x, y, (maxOrder == null ? 0 : maxOrder + 1));
     }
+
+    @Override
+    @Transactional
+    public void updateBlueprint(Blueprint bp) throws BlueprintNotFoundException {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM blueprints WHERE author = ? AND name = ?",
+                Integer.class, bp.getAuthor(), bp.getName());
+
+        if (count == null || count == 0) {
+            throw new BlueprintNotFoundException(
+                    "Blueprint not found: " + bp.getAuthor() + "/" + bp.getName());
+        }
+
+        // Reemplaza todos los puntos: borra los existentes e inserta los nuevos en orden.
+        jdbc.update("DELETE FROM blueprint_points WHERE author = ? AND name = ?",
+                bp.getAuthor(), bp.getName());
+
+        List<Point> pts = bp.getPoints();
+        for (int i = 0; i < pts.size(); i++) {
+            jdbc.update("INSERT INTO blueprint_points (author, name, x, y, point_order) VALUES (?, ?, ?, ?, ?)",
+                    bp.getAuthor(), bp.getName(), pts.get(i).x(), pts.get(i).y(), i);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteBlueprint(String author, String name) throws BlueprintNotFoundException {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM blueprints WHERE author = ? AND name = ?",
+                Integer.class, author, name);
+
+        if (count == null || count == 0) {
+            throw new BlueprintNotFoundException("Blueprint not found: " + author + "/" + name);
+        }
+
+        jdbc.update("DELETE FROM blueprint_points WHERE author = ? AND name = ?", author, name);
+        jdbc.update("DELETE FROM blueprints WHERE author = ? AND name = ?", author, name);
+    }
 }

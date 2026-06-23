@@ -111,6 +111,44 @@ public class BlueprintsAPIController {
         }
     }
 
+    @Operation(summary = "Actualizar un blueprint existente (reemplaza todos sus puntos)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "202", description = "Blueprint actualizado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+        @ApiResponse(responseCode = "404", description = "Blueprint no encontrado")
+    })
+    @PutMapping("/{author}/{bpname}")
+    public ResponseEntity<edu.eci.arsw.blueprints.controllers.ApiResponse<?>> update(
+            @PathVariable String author, @PathVariable String bpname,
+            @Valid @RequestBody UpdateBlueprintRequest req) {
+        try {
+            Blueprint bp = new Blueprint(author, bpname, req.points());
+            services.updateBlueprint(bp);
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(edu.eci.arsw.blueprints.controllers.ApiResponse.ok(null));
+        } catch (BlueprintNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(edu.eci.arsw.blueprints.controllers.ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Eliminar un blueprint existente")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Blueprint eliminado exitosamente"),
+        @ApiResponse(responseCode = "404", description = "Blueprint no encontrado")
+    })
+    @DeleteMapping("/{author}/{bpname}")
+    public ResponseEntity<edu.eci.arsw.blueprints.controllers.ApiResponse<?>> delete(
+            @PathVariable String author, @PathVariable String bpname) {
+        try {
+            services.deleteBlueprint(author, bpname);
+            return ResponseEntity.ok(edu.eci.arsw.blueprints.controllers.ApiResponse.ok(null));
+        } catch (BlueprintNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(edu.eci.arsw.blueprints.controllers.ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
     public ResponseEntity<edu.eci.arsw.blueprints.controllers.ApiResponse<?>> handleValidation(
             org.springframework.web.bind.MethodArgumentNotValidException ex) {
@@ -124,6 +162,10 @@ public class BlueprintsAPIController {
     public record NewBlueprintRequest(
             @NotBlank String author,
             @NotBlank String name,
+            @Valid List<Point> points
+    ) {}
+
+    public record UpdateBlueprintRequest(
             @Valid List<Point> points
     ) {}
 }
